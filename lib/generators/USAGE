@@ -1,0 +1,8 @@
+Description:
+    Generates RegacyDB model to be used with legacy databases.
+
+Example:
+    rails generate rmodel model_name
+
+    This will create:
+        app/models/model_name.rb   that derives from RegacyDB::Base

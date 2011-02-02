@@ -1,4 +1,141 @@
-RegacyDB
+= Welcome to RBatis!
 
-plugin for Rails 3 to support "legacy databases"
-based heavily on RBatis by Jon Tiersen, 2006
+RBatis is the port of iBatis[http://ibatis.apache.org] to Ruby and Ruby on Rails.
+
+== Using RBatis with Ruby on Rails
+
+Currently the best way to use RBatis is in the Ruby on Rails framework. It can be used outside Ruby on Rails but this is not well-documented.
+
+== Installing the plugin
+
+In the root of your Ruby on Rails application run:
+
+  ./script/plugin install https://svn.apache.org/repos/asf/ibatis/trunk/rb/rbatis
+
+== Generating a model
+
+You can generate a RBatis derived model using:
+
+  ./script/generate rbatis account
+
+It will generate a test and an empty RBatis model that looks something like:
+
+  class Account < RBatis::Base
+  end
+
+== Statements and resultmaps
+
+There's two core concepts of RBatis: +statements+ and +resultmaps+. Statements correspond to normal SQL statements, these are:
++select+ :: See RBatis::Select
++select_one+ :: See RBatis::SelectOne
++select_value+ :: See RBatis::SelectValue
++insert+ :: See RBatis::Insert
++update+ :: See RBatis::Update
++delete+ :: See RBatis::Delete
+
+All statements are declared with RBatis::Repository::ClassMethods#statement.
+
+A +resultmap+ is used by the select statements to map a record in the resultset to a Ruby object, a ResultMap is declared with RBatis::Repository::ClassMethods#resultmap.
+
+== Declaring a +select+ and +select_one+
+
+  class Product < RBatis::Base
+
+    statement :select_one, :find do |productid|
+      ["SELECT * FROM product WHERE productid = ?", productid]
+    end
+
+    statement :select, :find_by_category do |category|
+      ["SELECT * FROM product WHERE category = ?", category]
+    end
+  end
+
+These statements can be executed using:
+  Product.find(id)
+  Product.find_by_category(category)
+  
+But first you need to declare a resultmap. If otherwise specified a statement uses the resultmap named +:default+.
+
+See RBatis::Select and RBatis::SelectOne.
+
+== Declaring a +resultmap+
+
+A +resultmap+ is used by a +select+ (or +select_one+) to map one record from the database into a Ruby object. If a +resultmap+ is not specified when declaring the +select+ (or +select_one+) then the +resultmap+ named +:default+ will be used. This is an example of a +resultmap+:
+
+  resultmap :default,
+    :product_id => ["productid", String],
+    :name => ["name", String],
+    :description => ["descn", String],
+    :items => RBatis::LazyAssociation.new(:to => Item, :select => :find_by_product, :key => :product_id)
+
+The left hand side declares the field in the Ruby object and the right hand side is the mapping specification. The mapping specification can be an array in which case the RBatis::Column mapping is automatically used or it can be any other object that responds to +map(record, result) such as for example RBatis::LazyAssociation.
+
+See RBatis::ResultMap.
+
+== Declaring a +select_value+
+
+A +select_value+ selects one value such as a integer or string from the database. For example:
+
+  statement :select_value, :find_next_order_id, :result_type => Fixnum do
+    "SELECT MAX(orderid) + 1 FROM orders"
+  end
+
+See RBatis::SelectValue.
+
+== Declaring lazy associations
+
+TODO
+
+See RBatis::LazyAssociation.
+
+== Declaring eager associations
+
+Support for outer join eager loading has not yet been implemented. It will be in a coming release.
+
+== Writing a custom type
+
+A custom type is any object that implements +from_database(record, column)+. These are implemented on Fixnum and String. The +column+ parameter is anything you pass as the first value to the mapping specification in your resultmap. Here is an example of a hairy multi-column mapping:
+
+  class HairyObject
+    def initialize(value1, value2)
+      # ...
+    end
+  end
+
+  class HairyMultiColumnMapping
+    def self.from_database(record, columns)
+      first_column, second_column = *columns
+      HairyObject.new(record[first_column], record[second_column])
+    end
+  end
+
+And this would be used like this in a resultmap:
+
+  resultmap :default,
+    :hairy => [[:column1, :column2], HairyMultiColumnMapping]
+
+== Declaring +insert+, +update+ and +delete+
+
+These are relatively simple. Resultmaps are not used with these, you need to handle the mappings yourself using normal Ruby on Rails quoting. Here's some examples:
+
+  statement :insert do |person|
+    ["INSERT INTO people (name) VALUES (?)", person.name]
+  end
+
+  statement :update do |person|
+    ["UPDATE people SET name = ? WHERE id = ?", person.name, person.person_id]
+  end
+
+  statement :delete do |person|
+    ["DELETE FROM people WHERE id = ?", person.person_id]
+  end
+
+See RBatis::Insert, RBatis::Update, RBatis::Delete.
+
+== Using RBatis outside Ruby on Rails
+
+
+Author::    Jon Tirsen  (mailto:jtirsen@apache.org)
+Copyright:: Copyright (c) 2006 Apache Software Foundation
+License::   Apache Version 2.0 (see http://www.apache.org/licenses/)
+
