@@ -1,0 +1,4 @@
+RegacyDB
+
+plugin for Rails 3 to support "legacy databases"
+based heavily on RBatis by Jon Tiersen, 2006
